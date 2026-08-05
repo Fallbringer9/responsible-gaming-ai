@@ -1,0 +1,15 @@
+{
+  "player_id": "player-123",
+  "period_start": "2026-07-01T00:00:00Z",
+  "period_end": "2026-07-08T00:00:00Z",
+  "deposit_count": 12,
+  "total_deposit_amount": "1500.00",
+  "total_withdrawal_amount": "400.00",
+  "total_wager_amount": "3200.00",
+  "total_win_amount": "2800.00",
+  "session_count": 18,
+  "nighttime_session_count": 6,
+  "limit_increase_request_count": 2,
+  "failed_deposit_attempt_count": 3,
+  "cancelled_withdrawal_count": 1
+}
