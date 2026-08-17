@@ -1,0 +1,25 @@
+{
+  "metadataAttributes": {
+    "authority": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "ANJ"
+      },
+      "includeForEmbedding": false
+    },
+    "document_type": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "regulation"
+      },
+      "includeForEmbedding": false
+    },
+    "language": {
+      "value": {
+        "type": "STRING",
+        "stringValue": "fr"
+      },
+      "includeForEmbedding": false
+    }
+  }
+}

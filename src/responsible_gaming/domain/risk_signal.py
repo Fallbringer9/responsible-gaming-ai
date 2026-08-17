@@ -23,35 +23,36 @@ class RiskSignal:
 
 _SIGNAL_METADATA = {
     RiskSignalCode.HIGH_DEPOSIT: {
-        "title": "High deposit amount",
+        "title": "Dépôts importants",
         "description": (
-            "The player's total deposits exceeded the configured threshold."
+            "Le montant total des dépôts du joueur dépasse le seuil configuré."
         ),
     },
     RiskSignalCode.NIGHT_SESSION: {
-        "title": "Night sessions",
-        "description": ("The player exceeded the configured number of night sessions."),
+        "title": "Sessions de jeu nocturnes",
+        "description": (
+            "Le joueur dépasse le nombre configuré de sessions de jeu nocturnes."
+        ),
     },
     RiskSignalCode.FREQUENT_DEPOSIT: {
-        "title": "Frequent deposits",
-        "description": ("The player exceeded the configured number of deposits."),
+        "title": "Dépôts fréquents",
+        "description": ("Le joueur dépasse le nombre configuré de dépôts."),
     },
     RiskSignalCode.LIMIT_INCREASE: {
-        "title": "Limit increase requests",
+        "title": "Demandes d'augmentation des limites",
         "description": (
-            "The player exceeded the configured number of limit increase requests."
+            "Le joueur dépasse le nombre configuré de "
+            "demandes d'augmentation des limites."
         ),
     },
     RiskSignalCode.FAILED_DEPOSIT: {
-        "title": "Failed deposit attempts",
+        "title": "Tentatives de dépôt refusées",
         "description": (
-            "The player exceeded the configured number of failed deposit attempts."
+            "Le joueur dépasse le nombre configuré de tentatives de dépôt refusées."
         ),
     },
     RiskSignalCode.CANCELLED_WITHDRAWAL: {
-        "title": "Cancelled withdrawals",
-        "description": (
-            "The player exceeded the configured number of cancelled withdrawals."
-        ),
+        "title": "Retraits annulés",
+        "description": ("Le joueur dépasse le nombre configuré de retraits annulés."),
     },
 }

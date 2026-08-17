@@ -3,15 +3,13 @@ from typing import Protocol
 from responsible_gaming.application.rag.knowledge_document import (
     KnowledgeDocument,
 )
-from responsible_gaming.domain.risk_analysis_result import (
-    RiskAnalysisResult,
-)
+from responsible_gaming.application.rag.knowledge_query import KnowledgeQuery
 
 
 class RetrieveKnowledgeService(Protocol):
-    """Retrieves knowledge documents relevant to a risk analysis."""
+    """Retrieves knowledge documents relevant to a knowledge query."""
 
     def retrieve(
         self,
-        analysis: RiskAnalysisResult,
+        query: KnowledgeQuery,
     ) -> tuple[KnowledgeDocument, ...]: ...
