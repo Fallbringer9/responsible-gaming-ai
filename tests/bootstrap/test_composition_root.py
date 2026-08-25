@@ -22,8 +22,13 @@ from responsible_gaming.domain.risk_analysis_service import RiskAnalysisService
 
 
 class FakeBedrockClientFactory:
-    def __init__(self, region_name: str) -> None:
+    def __init__(
+        self,
+        region_name: str,
+        profile_name: str | None = None,
+    ) -> None:
         self.region_name = region_name
+        self.profile_name = profile_name
 
     def create_knowledge_base_client(self) -> Any:
         return object()
@@ -55,28 +60,41 @@ def test_build_analyze_player_use_case_wires_dependencies(
         knowledge_base_id="kb-test",
         model_id="model-test",
         thresholds=thresholds,
+        profile_name="test-profile",
     )
 
-    assert isinstance(use_case, AnalyzePlayerUseCase)
+    assert isinstance(
+        use_case,
+        AnalyzePlayerUseCase,
+    )
 
     assert isinstance(
         use_case.risk_analysis_service,
         RiskAnalysisService,
     )
-    assert len(use_case.risk_analysis_service.detectors) == 6
+
+    assert (
+        len(
+            use_case.risk_analysis_service.detectors,
+        )
+        == 6
+    )
 
     assert isinstance(
         use_case.knowledge_query_builder,
         DefaultKnowledgeQueryBuilder,
     )
+
     assert isinstance(
         use_case.knowledge_retriever,
         BedrockKnowledgeRetriever,
     )
+
     assert isinstance(
         use_case.prompt_builder,
         DefaultPromptBuilder,
     )
+
     assert isinstance(
         use_case.risk_assessment_service,
         BedrockRiskAssessmentService,

@@ -19,6 +19,17 @@ from responsible_gaming.application.ai.risk_assessment_service import (
 from responsible_gaming.application.ai.risk_level import RiskLevel
 
 
+def _parse_json_response(response_text: str) -> dict[str, Any]:
+    normalized = response_text.strip()
+
+    if normalized.startswith("```json") and normalized.endswith("```"):
+        normalized = normalized.removeprefix("```json")
+        normalized = normalized.removesuffix("```")
+        normalized = normalized.strip()
+
+    return json.loads(normalized)
+
+
 class BedrockRiskAssessmentService(RiskAssessmentService):
     """Produces risk assessments using Amazon Bedrock."""
 
@@ -54,7 +65,8 @@ class BedrockRiskAssessmentService(RiskAssessmentService):
         )
 
         response_text = response["output"]["message"]["content"][0]["text"]
-        data = json.loads(response_text)
+
+        data = _parse_json_response(response_text)
 
         recommendation_data = data["recommendation"]
 

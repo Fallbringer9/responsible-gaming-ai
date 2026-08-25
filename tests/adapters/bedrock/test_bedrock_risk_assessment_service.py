@@ -99,6 +99,31 @@ def test_assess_maps_bedrock_response_to_risk_assessment() -> None:
     assert action.category is RecommendationCategory.HUMAN_CONTACT
 
 
+def test_assess_accepts_json_wrapped_in_markdown_code_fence() -> None:
+    response_text = f"""```json
+{valid_assessment_json()}
+```"""
+
+    client = FakeBedrockClient(
+        response_text=response_text,
+    )
+
+    service = BedrockRiskAssessmentService(
+        client=client,
+        model_id="test-model",
+    )
+
+    prompt = Prompt(
+        system_prompt="Tu es un expert en jeu responsable.",
+        user_prompt="Analyse les signaux de risque de ce joueur.",
+    )
+
+    assessment = service.assess(prompt)
+
+    assert assessment.risk_level is RiskLevel.HIGH
+    assert assessment.confidence == 0.91
+
+
 def test_assess_sends_prompt_and_model_id_to_bedrock() -> None:
     client = FakeBedrockClient(
         response_text=valid_assessment_json(),

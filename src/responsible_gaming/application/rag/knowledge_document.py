@@ -10,7 +10,7 @@ class KnowledgeDocument:
     title: str
     source: str
     content: str
-    metadata: Mapping[str, str]
+    metadata: Mapping[str, object]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "title", self.title.strip())

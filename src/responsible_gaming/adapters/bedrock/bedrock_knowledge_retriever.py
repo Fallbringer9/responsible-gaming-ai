@@ -1,4 +1,6 @@
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import urlparse
 
 from responsible_gaming.application.rag.knowledge_document import (
     KnowledgeDocument,
@@ -39,7 +41,12 @@ class BedrockKnowledgeRetriever(RetrieveKnowledgeService):
             content = result["content"]["text"]
             source = result["location"]["s3Location"]["uri"]
             metadata = result.get("metadata", {})
-            title = metadata["title"]
+
+            title = metadata.get("title")
+
+            if not title:
+                parsed_source = urlparse(source)
+                title = PurePosixPath(parsed_source.path).name
 
             document = KnowledgeDocument(
                 title=title,

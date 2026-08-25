@@ -76,6 +76,12 @@ Rules:
 - priority must use one of the allowed values,
 - category must use one of the allowed category values,
 - recommendation.actions must contain at least one action,
+- Never invent or infer numerical thresholds, monetary amounts,
+  durations, limits, or intervention parameters.
+- If a specific value is not explicitly supported by the provided
+  risk signals or reference documents, do not provide that value.
+- Recommendations must remain qualitative when the provided
+  information does not support a specific value.
 - do not include Markdown,
 - do not include text before or after the JSON.
 """
