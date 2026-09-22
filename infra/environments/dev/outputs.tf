@@ -32,3 +32,23 @@ output "dispatcher_lambda_arn" {
   description = "ARN of the dispatcher Lambda function."
   value       = module.dispatcher.lambda_arn
 }
+
+output "review_api_endpoint" {
+  description = "Base URL of the human review API."
+  value       = module.review_api.api_endpoint
+}
+
+output "frontend_bucket_name" {
+  description = "Name of the private frontend S3 bucket."
+  value       = module.frontend_hosting.bucket_name
+}
+
+output "frontend_cloudfront_distribution_id" {
+  description = "ID of the frontend CloudFront distribution."
+  value       = module.frontend_hosting.cloudfront_distribution_id
+}
+
+output "frontend_cloudfront_domain_name" {
+  description = "CloudFront domain serving the operator frontend."
+  value       = module.frontend_hosting.cloudfront_domain_name
+}

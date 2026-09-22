@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Responsible Gaming Review</title>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="app-header">
+        <div>
+            <p class="eyebrow">Responsible Gaming AI</p>
+            <h1>Operator Review Console</h1>
+        </div>
+
+        <div class="operator-controls">
+            <div class="operator-status">
+                Human review
+            </div>
+
+            <a
+                class="logout-button"
+                href="/auth/logout"
+            >
+                Logout
+            </a>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <aside class="review-queue">
+            <div class="section-header">
+                <div>
+                    <p class="eyebrow">Review queue</p>
+                    <h2>Pending assessments</h2>
+                </div>
+
+                <button id="refresh-button" type="button">
+                    Refresh
+                </button>
+            </div>
+
+            <div id="review-list">
+                <p>Loading assessments...</p>
+            </div>
+        </aside>
+
+        <section class="review-detail">
+            <div id="empty-state">
+                <p class="eyebrow">Assessment</p>
+                <h2>Select a pending review</h2>
+                <p>
+                    Choose an assessment from the queue to review
+                    the AI analysis and recommendations.
+                </p>
+            </div>
+
+            <article id="assessment-panel" hidden>
+                <div class="assessment-header">
+                    <div>
+                        <p class="eyebrow">Assessment</p>
+                        <h2 id="assessment-id"></h2>
+                    </div>
+
+                    <span id="risk-level"></span>
+                </div>
+
+                <div class="metrics">
+                    <div>
+                        <span>Confidence</span>
+                        <strong id="confidence"></strong>
+                    </div>
+
+                    <div>
+                        <span>Status</span>
+                        <strong id="review-status"></strong>
+                    </div>
+                </div>
+
+                <section>
+                    <h3>AI reasoning</h3>
+                    <p id="reasoning"></p>
+                </section>
+
+                <section>
+                    <h3>Recommendation</h3>
+                    <p id="recommendation-summary"></p>
+
+                    <div id="recommendation-actions"></div>
+                </section>
+
+                <section class="decision-section">
+                    <h3>Human decision</h3>
+
+                    <label for="review-comment">
+                        Operator comment
+                    </label>
+
+                    <textarea
+                        id="review-comment"
+                        rows="4"
+                        placeholder="Add context for the review decision..."
+                    ></textarea>
+
+                    <div class="decision-actions">
+                        <button
+                            id="reject-button"
+                            type="button"
+                        >
+                            Reject
+                        </button>
+
+                        <button
+                            id="approve-button"
+                            type="button"
+                        >
+                            Approve
+                        </button>
+                    </div>
+
+                    <p id="decision-message"></p>
+                </section>
+            </article>
+        </section>
+    </main>
+
+    <div
+        id="decision-modal"
+        class="modal-backdrop"
+        role="presentation"
+        hidden
+    >
+        <section
+            class="decision-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="decision-modal-title"
+            aria-describedby="decision-modal-description"
+        >
+            <div
+                id="decision-modal-icon"
+                class="decision-modal-icon"
+                aria-hidden="true"
+            ></div>
+
+            <p class="eyebrow">Human review</p>
+
+            <h2 id="decision-modal-title">
+                Confirm decision
+            </h2>
+
+            <p
+                id="decision-modal-description"
+                class="decision-modal-description"
+            ></p>
+
+            <div class="decision-modal-assessment">
+                <span>Assessment</span>
+                <strong id="decision-modal-assessment-id"></strong>
+            </div>
+
+            <div class="decision-modal-actions">
+                <button
+                    id="decision-modal-cancel"
+                    class="modal-cancel-button"
+                    type="button"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    id="decision-modal-confirm"
+                    class="modal-confirm-button"
+                    type="button"
+                >
+                    Confirm
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

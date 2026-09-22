@@ -32,3 +32,9 @@ variable "model_id" {
   description = "Bedrock inference profile or model identifier."
   type        = string
 }
+
+variable "frontend_domain_name" {
+  description = "Custom domain name used by the Responsible Gaming frontend."
+  type        = string
+  default     = "responsible-gaming.manuworld.fr"
+}

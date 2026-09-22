@@ -1,4 +1,15 @@
 from responsible_gaming.application.ai.prompt_builder import PromptBuilder
+from responsible_gaming.application.ai.recommendation import Recommendation
+from responsible_gaming.application.ai.recommendation_action import (
+    RecommendationAction,
+)
+from responsible_gaming.application.ai.recommendation_category import (
+    RecommendationCategory,
+)
+from responsible_gaming.application.ai.recommendation_priority import (
+    RecommendationPriority,
+)
+from responsible_gaming.application.ai.risk_assessment import RiskAssessment
 from responsible_gaming.application.ai.risk_assessment_service import (
     RiskAssessmentService,
 )
@@ -36,6 +47,54 @@ def analyze_node(
 
     return {
         "analysis": analysis_to_state(analysis),
+    }
+
+
+def route_after_analysis(
+    state: ResponsibleGamingState,
+) -> str:
+    analysis = analysis_from_state(
+        state["analysis"],
+    )
+
+    if analysis.signals:
+        return "retrieve_knowledge"
+
+    return "build_low_risk_assessment"
+
+
+def build_low_risk_assessment_node(
+    state: ResponsibleGamingState,
+) -> dict:
+    assessment = RiskAssessment(
+        risk_level=RiskLevel.LOW,
+        confidence=1.0,
+        reasoning=(
+            "No deterministic responsible gaming risk signals were detected "
+            "for the analyzed period."
+        ),
+        recommendation=Recommendation(
+            summary=(
+                "No enhanced responsible gaming intervention is required "
+                "based on the detected signals."
+            ),
+            actions=(
+                RecommendationAction(
+                    title="Continue standard monitoring",
+                    description=(
+                        "Continue standard responsible gaming monitoring "
+                        "without additional intervention."
+                    ),
+                    priority=RecommendationPriority.LOW,
+                    category=RecommendationCategory.RESPONSIBLE_GAMING_INFORMATION,
+                ),
+            ),
+        ),
+    )
+
+    return {
+        "assessment": assessment_to_state(assessment),
+        "human_review_required": False,
     }
 
 

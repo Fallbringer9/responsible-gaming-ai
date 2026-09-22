@@ -37,28 +37,43 @@ resource "aws_sfn_state_machine" "risk_assessment" {
       }
 
       WaitForHumanReview = {
-        Type    = "Pass"
-        Comment = "Temporary placeholder for the future HITL callback."
-        Next    = "Finalize"
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke.waitForTaskToken"
+
+        Arguments = {
+          FunctionName = var.review_lambda_arn
+
+          Payload = {
+            assessment_id = "{% $states.input.assessment_id %}"
+            assessment    = "{% $states.input.assessment %}"
+            task_token    = "{% $states.context.Task.Token %}"
+          }
+        }
+
+        Next = "Finalize"
       }
 
       Finalize = {
         Type     = "Task"
-        Resource = "arn:aws:states:::dynamodb:putItem"
+        Resource = "arn:aws:states:::dynamodb:updateItem"
 
         Arguments = {
           TableName = var.assessment_table_name
 
-          Item = {
+          Key = {
             assessment_id = {
               S = "{% $states.input.assessment_id %}"
             }
+          }
 
-            assessment = {
+          UpdateExpression = "SET assessment = :assessment, human_review_required = :human_review_required REMOVE task_token"
+
+          ExpressionAttributeValues = {
+            ":assessment" = {
               S = "{% $string($states.input.assessment) %}"
             }
 
-            human_review_required = {
+            ":human_review_required" = {
               BOOL = "{% $states.input.human_review_required %}"
             }
           }

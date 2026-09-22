@@ -8,11 +8,6 @@ variable "environment" {
   type        = string
 }
 
-variable "assessment_lambda_arn" {
-  description = "ARN of the Lambda executing the responsible gaming assessment."
-  type        = string
-}
-
 variable "assessment_table_name" {
   description = "Name of the DynamoDB table storing assessments."
   type        = string
@@ -23,7 +18,7 @@ variable "assessment_table_arn" {
   type        = string
 }
 
-variable "review_lambda_arn" {
-  description = "ARN of the Lambda creating and handling human review requests."
+variable "lambda_package_path" {
+  description = "Path to the deployment package for the review Lambda."
   type        = string
 }

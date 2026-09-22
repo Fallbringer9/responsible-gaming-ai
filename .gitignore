@@ -57,5 +57,7 @@ layer/
 # Temporary files
 *.tmp
 *.swp
+tmp/
+
 # Python version manager
 .python-version

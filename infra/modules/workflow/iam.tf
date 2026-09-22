@@ -38,7 +38,10 @@ resource "aws_iam_role_policy" "invoke_assessment" {
           "lambda:InvokeFunction"
         ]
 
-        Resource = var.assessment_lambda_arn
+        Resource = [
+          var.assessment_lambda_arn,
+          var.review_lambda_arn,
+        ]
       }
     ]
   })
@@ -56,7 +59,7 @@ resource "aws_iam_role_policy" "write_assessment" {
         Effect = "Allow"
 
         Action = [
-          "dynamodb:PutItem"
+          "dynamodb:UpdateItem"
         ]
 
         Resource = var.assessment_table_arn

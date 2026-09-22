@@ -13,9 +13,11 @@ from responsible_gaming.application.rag.retrieve_knowledge_service import (
 from responsible_gaming.application.workflow.nodes import (
     analyze_node,
     assess_risk_node,
+    build_low_risk_assessment_node,
     build_prompt_node,
     decide_human_review_node,
     retrieve_knowledge_node,
+    route_after_analysis,
 )
 from responsible_gaming.application.workflow.state import ResponsibleGamingState
 from responsible_gaming.domain.risk_analysis_service import RiskAnalysisService
@@ -36,6 +38,11 @@ def build_responsible_gaming_graph(
             state=state,
             analysis_service=analysis_service,
         ),
+    )
+
+    builder.add_node(
+        "build_low_risk_assessment",
+        build_low_risk_assessment_node,
     )
 
     builder.add_node(
@@ -73,9 +80,18 @@ def build_responsible_gaming_graph(
         "analyze",
     )
 
-    builder.add_edge(
+    builder.add_conditional_edges(
         "analyze",
-        "retrieve_knowledge",
+        route_after_analysis,
+        {
+            "retrieve_knowledge": "retrieve_knowledge",
+            "build_low_risk_assessment": "build_low_risk_assessment",
+        },
+    )
+
+    builder.add_edge(
+        "build_low_risk_assessment",
+        END,
     )
 
     builder.add_edge(
