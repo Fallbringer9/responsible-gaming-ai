@@ -5,8 +5,18 @@ from typing import Any
 from urllib.parse import unquote_plus
 
 import boto3
+from botocore.client import BaseClient
 
-step_functions_client = boto3.client("stepfunctions")
+step_functions_client: BaseClient | None = None
+
+
+def _get_step_functions_client() -> BaseClient:
+    global step_functions_client
+
+    if step_functions_client is None:
+        step_functions_client = boto3.client("stepfunctions")
+
+    return step_functions_client
 
 
 def _build_assessment_id(
@@ -56,7 +66,9 @@ def _start_workflow(
         },
     }
 
-    step_functions_client.start_execution(
+    client = _get_step_functions_client()
+
+    client.start_execution(
         stateMachineArn=os.environ["STATE_MACHINE_ARN"],
         name=f"assessment-{assessment_id}",
         input=json.dumps(workflow_input),
