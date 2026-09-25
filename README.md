@@ -1,745 +1,1062 @@
 # Responsible Gaming AI
 
-Plateforme d'analyse du jeu responsable basée sur Python, AWS et l'intelligence artificielle générative.
+Système d'aide à la décision destiné aux équipes de jeu responsable, construit avec **Python, AWS, LangGraph et Amazon Bedrock**.
 
-## Présentation
+Responsible Gaming AI analyse l'activité d'un joueur, détecte des signaux de risque à l'aide de règles déterministes, récupère les procédures de jeu responsable pertinentes grâce à un système RAG, puis utilise un LLM pour produire une évaluation structurée.
 
-Après 12 années d'expérience dans l'industrie des casinos, j'ai entrepris une reconversion vers le développement backend, le cloud et l'intelligence artificielle.
+Lorsqu'une situation nécessite une intervention humaine, le workflow est suspendu jusqu'à la décision d'un opérateur.
 
-Responsible Gaming AI est un projet qui combine cette expertise métier avec des pratiques modernes d'ingénierie logicielle, d'architecture cloud et d'IA.
-
-L'objectif est de construire une plateforme capable de :
-
-- détecter des indicateurs de risque à partir de règles métier déterministes ;
-- enrichir cette analyse avec des documents de référence grâce à une architecture RAG ;
-- utiliser un Large Language Model pour produire une évaluation structurée du risque ;
-- proposer des recommandations explicables à destination des opérateurs de jeu responsable ;
-- orchestrer le traitement de manière événementielle sur AWS ;
-- conserver un humain dans la boucle pour la décision finale.
-
-Ce projet est développé comme une application portfolio mettant en pratique l'architecture hexagonale, le Domain-Driven Design, le RAG, LangGraph, les services AWS et l'Infrastructure as Code avec Terraform.
+> **Ce projet portfolio utilise exclusivement des données fictives. Il ne prend aucune décision autonome concernant de vrais joueurs.**
 
 ---
 
-## Architecture
+## Pourquoi ce projet ?
 
-Le pipeline est conçu autour d'une architecture événementielle.
+Ce projet est directement lié à mon parcours professionnel.
 
-```text
-                    Player Activity JSON
-                            │
-                            ▼
-                       Amazon S3
-                            │
-                     ObjectCreated
-                            ▼
-                       Amazon SQS
-                      ┌─────┴─────┐
-                      │           │
-                      │          DLQ
-                      ▼
-                  Dispatcher Lambda
-                            │
-                            ▼
-                    AWS Step Functions
-                            │
-                            ▼
-                    Assessment Lambda
-                            │
-                            ▼
-                        LangGraph
-                            │
-                            ▼
-                PlayerActivitySnapshot
-                            │
-                            ▼
-              Deterministic Risk Analysis
-                            │
-                            ▼
-                 RiskAnalysisResult
-                            │
-                            ▼
-             DefaultKnowledgeQueryBuilder
-                            │
-                            ▼
-              Bedrock Knowledge Base
-                       (RAG)
-                            │
-                            ▼
-                  KnowledgeDocument[]
-                            │
-                            ▼
-                DefaultPromptBuilder
-                            │
-                            ▼
-                Amazon Bedrock / Claude
-                            │
-                            ▼
-                   RiskAssessment
-                            │
-                            ▼
-                  NeedHumanReview?
-                       (Choice)
-                     ┌──────┴──────┐
-                     │             │
-                   false          true
-                     │             │
-                     │      WaitForHumanReview
-                     │        (placeholder)
-                     │             │
-                     └──────┬──────┘
-                            ▼
-                         Finalize
-                            │
-                            ▼
-                     Amazon DynamoDB
-```
+Avant ma reconversion vers le développement logiciel, le cloud et l'intelligence artificielle, j'ai travaillé pendant **12 ans dans l'univers des jeux et des casinos**.
 
-Le pipeline d'analyse applicatif est orchestré avec LangGraph.
+J'ai donc choisi de construire un projet autour d'un domaine que je connais, plutôt que de créer un cas d'usage IA générique.
 
-AWS Step Functions orchestre le traitement distribué entre les composants AWS et porte la logique de branchement vers la revue humaine.
+L'objectif était de partir d'une problématique métier concrète :
 
-Les événements d'entrée sont déposés dans Amazon S3 puis transmis via Amazon SQS à une Lambda de dispatch, qui démarre une nouvelle exécution Step Functions.
+> **Comment utiliser l'automatisation et l'intelligence artificielle pour assister l'analyse de comportements de jeu potentiellement à risque, sans déléguer la décision à une IA ?**
 
-Les évaluations produites sont finalement persistées dans Amazon DynamoDB.
+Mon expérience provient principalement de l'univers du casino physique. Le projet transpose cette connaissance du secteur vers un cas d'usage numérique de Responsible Gaming et ne prétend pas reproduire les processus internes d'un opérateur particulier.
 
 ---
 
-## Architecture logicielle
+## Le problème métier
 
-Le projet suit une architecture inspirée de l'architecture hexagonale afin de séparer la logique métier des services externes et de l'infrastructure AWS.
+Une plateforme de jeu peut générer de nombreux événements autour de l'activité d'un joueur :
 
-```text
-src/responsible_gaming/
-│
-├── domain/
-│   ├── PlayerActivitySnapshot
-│   ├── RiskSignal
-│   ├── RiskAnalysisResult
-│   ├── RiskAnalysisService
-│   └── deterministic detectors
-│
-├── application/
-│   ├── ai/
-│   │   ├── Prompt
-│   │   ├── PromptBuilder
-│   │   ├── DefaultPromptBuilder
-│   │   ├── RiskAssessment
-│   │   ├── Recommendation
-│   │   └── RiskAssessmentService
-│   │
-│   ├── rag/
-│   │   ├── KnowledgeQuery
-│   │   ├── KnowledgeQueryBuilder
-│   │   ├── DefaultKnowledgeQueryBuilder
-│   │   ├── KnowledgeDocument
-│   │   └── RetrieveKnowledgeService
-│   │
-│   ├── workflow/
-│   │   ├── graph.py
-│   │   ├── nodes.py
-│   │   ├── state.py
-│   │   └── state_mapper.py
-│   │
-│   └── use_cases/
-│       └── AnalyzePlayerUseCase
-│
-├── adapters/
-│   └── bedrock/
-│       ├── BedrockKnowledgeRetriever
-│       ├── BedrockRiskAssessmentService
-│       └── BedrockClientFactory
-│
-├── interfaces/
-│   └── lambda_handlers/
-│       ├── dispatcher.py
-│       └── assessment.py
-│
-└── bootstrap/
-    └── Composition Root
-```
+- dépôts ;
+- retraits ;
+- sessions de jeu ;
+- changements de limites ;
+- tentatives de paiement ;
+- activité nocturne.
 
-### Domain
+Pris individuellement, ces événements ne permettent pas nécessairement de tirer une conclusion.
 
-Le domaine contient la logique métier indépendante de toute infrastructure.
+En revanche, certains comportements ou leur accumulation peuvent constituer des **signaux nécessitant une attention particulière**.
 
-Les signaux de risque sont détectés à l'aide de règles déterministes telles que :
+Par exemple :
 
-- montant élevé de dépôts ;
-- fréquence élevée des dépôts ;
-- sessions de jeu nocturnes ;
-- demandes d'augmentation de limites ;
+- fréquence importante des dépôts ;
+- montant de dépôts élevé ;
+- sessions nocturnes répétées ;
+- demandes répétées d'augmentation de limites ;
 - tentatives de dépôt échouées ;
 - annulations de retraits.
 
-Les seuils métier sont injectés dans les détecteurs et ne dépendent ni d'AWS, ni de Bedrock, ni du LLM.
+Le problème n'est donc pas simplement de collecter des données.
 
-Cette séparation permet de conserver une logique métier testable et prévisible avant toute intervention de l'IA générative.
-
-### Application
-
-La couche application contient les cas d'usage et les composants nécessaires à l'orchestration du pipeline d'analyse.
-
-Elle définit également des contrats avec `Protocol` afin que la logique applicative ne dépende pas directement des implémentations AWS.
-
-Exemple :
+Il faut être capable de :
 
 ```text
-RiskAssessmentService
-        ▲
-        │
-BedrockRiskAssessmentService
+observer l'activité
+        ↓
+détecter les événements pertinents
+        ↓
+les confronter aux procédures de jeu responsable
+        ↓
+contextualiser les signaux
+        ↓
+produire une review exploitable
+        ↓
+laisser un humain prendre la décision
 ```
 
-Cette séparation permet notamment de remplacer les services externes par des fakes pendant les tests.
-
-### Adapters
-
-Les adapters contiennent les implémentations liées aux services externes.
-
-`BedrockKnowledgeRetriever` traduit les résultats d'une Amazon Bedrock Knowledge Base vers des objets applicatifs `KnowledgeDocument`.
-
-`BedrockRiskAssessmentService` envoie le prompt au modèle via Amazon Bedrock et transforme la réponse JSON en objets Python structurés :
-
-```text
-Bedrock response
-       │
-       ▼
-      JSON
-       │
-       ▼
-RiskAssessment
-├── RiskLevel
-├── confidence
-├── reasoning
-└── Recommendation
-    └── actions[]
-```
-
-### Composition Root
-
-Le Composition Root constitue le point d'assemblage de l'application.
-
-Il connecte les implémentations concrètes aux contrats utilisés par le pipeline :
-
-```text
-AnalyzePlayerUseCase
-│
-├── RiskAnalysisService
-├── DefaultKnowledgeQueryBuilder
-├── BedrockKnowledgeRetriever
-├── DefaultPromptBuilder
-└── BedrockRiskAssessmentService
-```
-
-Cette approche applique notamment le principe d'inversion des dépendances (Dependency Inversion Principle).
+C'est ce workflow que Responsible Gaming AI cherche à modéliser.
 
 ---
 
-## Workflow LangGraph
+## Objectif de l'application
 
-LangGraph orchestre les différentes étapes nécessaires à la production d'une évaluation.
-
-```text
-Analyze
-   │
-   ▼
-Retrieve Knowledge
-   │
-   ▼
-Build Prompt
-   │
-   ▼
-Assess Risk
-   │
-   ▼
-Decide Human Review
-```
-
-Chaque node possède une responsabilité spécifique.
-
-L'état LangGraph utilise des structures sérialisables afin de permettre au workflow de circuler proprement entre les différentes étapes.
-
-LangGraph reste responsable du workflow d'analyse IA.
-
-AWS Step Functions est utilisé à un niveau supérieur pour orchestrer le traitement distribué, les composants AWS et, à terme, l'attente asynchrone liée à la validation humaine.
-
-Cette séparation permet notamment d'éviter de maintenir une Lambda active pendant une revue humaine potentiellement longue.
-
----
-
-## Pipeline événementiel AWS
-
-L'entrée du système repose sur Amazon S3.
-
-Un snapshot d'activité joueur au format JSON est déposé dans le bucket d'entrée :
-
-```text
-JSON
- │
- ▼
-Amazon S3
- │
- │ ObjectCreated
- ▼
-Amazon SQS
- │
- ▼
-Dispatcher Lambda
- │
- ▼
-AWS Step Functions
-```
-
-Amazon SQS joue le rôle de buffer entre l'arrivée des fichiers et leur traitement.
-
-Une Dead-Letter Queue permet d'isoler les messages qui échouent après plusieurs tentatives.
-
-Le mapping Lambda/SQS utilise également le mécanisme de partial batch failure afin qu'un message invalide n'impose pas le retraitement des messages correctement traités du même batch.
-
-La Lambda `dispatcher` transforme l'événement reçu en un contrat plus simple contenant notamment :
+À partir d'un snapshot d'activité fictif :
 
 ```json
 {
-  "assessment_id": "...",
-  "input": {
-    "bucket": "...",
-    "key": "..."
-  }
+  "player_id": "DEMO-001",
+  "deposit_count": 32,
+  "total_deposit_amount": "7500.00",
+  "session_count": 28,
+  "nighttime_session_count": 18,
+  "limit_increase_request_count": 8,
+  "failed_deposit_attempt_count": 15,
+  "cancelled_withdrawal_count": 9
 }
 ```
 
-Elle démarre ensuite une exécution AWS Step Functions.
-
----
-
-## RAG
-
-Le projet utilise une architecture Retrieval-Augmented Generation pour enrichir l'analyse avec des documents de référence sur le jeu responsable.
-
-Le corpus contient notamment des documents réglementaires et des guides utilisés comme sources de connaissance.
+le système transforme les données brutes en une review structurée :
 
 ```text
-RiskAnalysisResult
-        │
-        ▼
-KnowledgeQuery
-        │
-        ▼
-Bedrock Knowledge Base
-        │
-        ▼
-Relevant documents
-        │
-        ▼
-LLM context
+Activité joueur
+      ↓
+Détection déterministe
+      ↓
+Signaux de risque
+      ↓
+Contexte documentaire
+      ↓
+Analyse LLM
+      ↓
+Risk Assessment
+      ↓
+Validation humaine si nécessaire
 ```
 
-Le modèle reçoit ainsi à la fois :
+L'application est volontairement un **système d'aide à la décision**.
 
-- les signaux déterministes détectés ;
-- les valeurs observées ;
-- les seuils associés ;
-- les documents pertinents récupérés par le RAG.
-
-L'objectif est de conserver une base déterministe pour la détection tout en utilisant le LLM pour contextualiser l'analyse et produire des recommandations structurées.
+Elle ne prend aucune mesure directement sur le compte d'un joueur.
 
 ---
 
-## Sortie structurée du LLM
+## Pourquoi ne pas tout confier au LLM ?
 
-Le modèle doit produire une réponse JSON respectant un contrat défini par l'application.
+Une approche simple aurait pu consister à transmettre toute l'activité du joueur à un LLM et lui demander :
+
+> « Ce joueur présente-t-il un risque ? »
+
+J'ai volontairement écarté cette architecture.
+
+Une grande partie des informations analysées sont des **faits mesurables**.
+
+Déterminer qu'un joueur a effectué un certain nombre de dépôts ou que le montant total de ses dépôts dépasse un seuil ne nécessite pas de modèle génératif.
+
+Ces éléments sont donc détectés par du code Python déterministe.
+
+```text
+Données joueur
+      ↓
+Règles Python
+      ↓
+Signaux objectifs
+```
+
+L'IA intervient ensuite sur une responsabilité différente :
+
+```text
+Signaux détectés
+       +
+Procédures Responsible Gaming
+       ↓
+      RAG
+       ↓
+      LLM
+       ↓
+Analyse contextualisée
+```
+
+Cette séparation permet de conserver la détection des faits :
+
+- déterministe ;
+- explicable ;
+- testable ;
+- reproductible.
+
+Le LLM est utilisé là où il apporte davantage de valeur : **synthétiser et contextualiser les signaux en utilisant le corpus documentaire disponible**.
+
+---
+
+## Pourquoi un Human-in-the-Loop ?
+
+Détecter plusieurs signaux ne signifie pas automatiquement qu'une action doit être prise concernant un joueur.
+
+Cette distinction est centrale dans la conception du projet.
+
+Responsible Gaming AI ne cherche donc pas à remplacer l'opérateur.
+
+```text
+Machine
+│
+├── détecte
+├── récupère le contexte
+├── analyse
+└── recommande
+        │
+        ▼
+      Humain
+        │
+        ├── APPROVE
+        └── REJECT
+```
+
+Lorsqu'une validation humaine est nécessaire, le workflow s'arrête réellement et attend la décision d'un opérateur.
+
+Même après cette décision, la V1 :
+
+- ne bloque aucun compte ;
+- ne modifie aucune limite ;
+- ne suspend aucun joueur ;
+- n'envoie aucune communication automatiquement.
+
+Elle finalise uniquement la review.
+
+Cette frontière entre **analyse automatisée** et **action métier** est volontaire.
+
+---
+
+# Architecture
+
+```text
+Player Activity JSON
+        │
+        ▼
+    Amazon S3
+        │
+        │ ObjectCreated
+        ▼
+    Amazon SQS ─────────────► DLQ
+        │
+        ▼
+ Dispatcher Lambda
+        │
+        ▼
+ AWS Step Functions
+        │
+        ▼
+ Assessment Lambda
+        │
+        ▼
+     LangGraph
+        │
+        ▼
+Analyse déterministe
+        │
+        ├──── Aucun signal
+        │          │
+        │          ▼
+        │   Assessment LOW
+        │    déterministe
+        │
+        └──── Signaux détectés
+                   │
+                   ▼
+          Bedrock Knowledge Base
+                   │
+                   ▼
+                  RAG
+                   │
+                   ▼
+            Amazon Bedrock
+                   │
+                   ▼
+          Risk Assessment
+                   │
+                   ▼
+        human_review_required?
+              │           │
+            false        true
+              │           │
+              │           ▼
+              │      Human Review
+              │     APPROVE / REJECT
+              │           │
+              │     SendTaskSuccess
+              │           │
+              └─────┬─────┘
+                    ▼
+                 Finalize
+                    │
+                    ▼
+                DynamoDB
+```
+
+L'interface opérateur suit un flux séparé :
+
+```text
+Browser
+   │
+   ▼
+CloudFront
+   │
+   ├──── Frontend statique → S3
+   │
+   └──── /api/*
+             │
+             ▼
+        API Gateway
+             │
+             ▼
+      Cognito / JWT
+             │
+             ▼
+       Review Lambdas
+             │
+             ▼
+          DynamoDB
+```
+
+---
+
+## Du besoin métier à l'architecture
+
+Les composants techniques ont été choisis à partir des responsabilités du système.
+
+| Besoin | Choix technique |
+|---|---|
+| Détecter des faits objectifs | Règles Python déterministes |
+| Produire une analyse contextualisée | LLM via Amazon Bedrock |
+| Utiliser les procédures métier | RAG / Bedrock Knowledge Base |
+| Modéliser le workflow IA | LangGraph |
+| Orchestrer les composants AWS | Step Functions |
+| Attendre une décision humaine | Callback / Task Token |
+| Découpler l'ingestion | SQS |
+| Gérer les messages en échec | DLQ |
+| Conserver les reviews | DynamoDB |
+| Protéger l'interface opérateur | Cognito + JWT |
+| Héberger le frontend | S3 + CloudFront |
+| Déployer l'infrastructure | Terraform |
+| Vérifier les changements | GitHub Actions |
+| Observer le système | CloudWatch + Datadog |
+
+L'architecture ne part donc pas d'une liste de services AWS à utiliser : elle découle progressivement des contraintes du problème.
+
+---
+
+# Détection déterministe des risques
+
+Le domaine contient plusieurs détecteurs indépendants.
+
+Les signaux fictifs actuellement modélisés à des fins de démonstration sont :
+
+| Signal | Sévérité |
+|---|---|
+| Montant de dépôt élevé | HIGH |
+| Dépôts fréquents | MEDIUM |
+| Sessions nocturnes | MEDIUM |
+| Demandes d'augmentation de limite | HIGH |
+| Tentatives de dépôt échouées | MEDIUM |
+| Retraits annulés | MEDIUM |
 
 Exemple simplifié :
 
-```json
-{
-  "risk_level": "HIGH",
-  "confidence": 0.91,
-  "reasoning": "...",
-  "recommendation": {
-    "summary": "...",
-    "actions": [
-      {
-        "title": "...",
-        "description": "...",
-        "priority": "HIGH",
-        "category": "HUMAN_CONTACT"
-      }
-    ]
-  }
-}
+```python
+def detect(
+    self,
+    snapshot: PlayerActivitySnapshot,
+) -> RiskSignal | None:
+    if snapshot.total_deposit_amount <= self.threshold:
+        return None
+
+    return RiskSignal(
+        code=RiskSignalCode.HIGH_DEPOSIT,
+        severity=Severity.HIGH,
+        observed_value=snapshot.total_deposit_amount,
+        threshold=self.threshold,
+    )
 ```
 
-La réponse est ensuite validée et transformée en objets Python typés.
+Ici, le rôle du LLM n'est pas de déterminer si le montant dépasse le seuil.
 
-Le LLM ne remplace pas les règles métier déterministes et ne prend pas la décision finale : il intervient comme couche d'analyse et de recommandation.
+Python peut répondre à cette question de manière déterministe.
+
+Le modèle intervient ensuite pour contextualiser les signaux détectés.
 
 ---
 
-## Human-in-the-loop
+# Workflow IA avec LangGraph
 
-Le système est conçu comme un outil d'aide à la décision.
-
-L'évaluation produite par l'IA ne remplace pas l'expertise d'un opérateur de jeu responsable. La décision finale reste humaine.
-
-Après l'évaluation, le workflow produit notamment :
-
-```json
-{
-  "human_review_required": true
-}
-```
-
-AWS Step Functions utilise ensuite un état `Choice` pour déterminer le chemin à emprunter :
+LangGraph orchestre le workflow interne d'analyse :
 
 ```text
-RiskAssessment
-      │
-      ▼
-human_review_required
-      │
-      ▼
-NeedHumanReview
-     Choice
-   ┌───┴───┐
- false    true
-   │        │
-   ▼        ▼
-Finalize  WaitForHumanReview
+START
+  │
+  ▼
+analyze
+  │
+  ├── aucun signal
+  │       │
+  │       ▼
+  │ build_low_risk_assessment
+  │       │
+  │       ▼
+  │      END
+  │
+  └── signaux détectés
+          │
+          ▼
+   retrieve_knowledge
+          │
+          ▼
+      build_prompt
+          │
+          ▼
+      assess_risk
+          │
+          ▼
+  decide_human_review
+          │
+          ▼
+         END
 ```
 
-Le branchement conditionnel est actuellement implémenté et validé sur AWS.
+## Le chemin LOW
 
-`WaitForHumanReview` constitue pour le moment un placeholder dans le workflow.
+Le système n'appelle pas systématiquement le LLM.
 
-La prochaine étape consiste à implémenter une véritable attente asynchrone avec le mécanisme Task Token de Step Functions, puis à permettre à un opérateur d'approuver ou de rejeter l'évaluation depuis une interface dédiée.
+Lorsqu'aucun signal déterministe n'est détecté :
+
+```text
+Aucun signal
+     ↓
+Pas de RAG
+     ↓
+Pas de LLM
+     ↓
+Assessment LOW déterministe
+```
+
+Cette branche est issue d'un problème rencontré pendant les tests End-to-End.
+
+Une première version tentait d'interroger la Bedrock Knowledge Base même lorsque la liste de signaux était vide.
+
+La requête RAG produite était alors vide et Bedrock rejetait la requête.
+
+Plutôt que d'introduire artificiellement une requête générique, le workflow a été modifié pour représenter explicitement ce cas métier.
+
+Cette décision :
+
+- évite un appel RAG inutile ;
+- évite un appel LLM inutile ;
+- réduit la latence ;
+- réduit les coûts ;
+- élimine un état invalide ;
+- rend le comportement métier explicite.
 
 ---
 
-## Persistance
+# LangGraph et Step Functions
 
-Les évaluations produites par le workflow sont persistées dans Amazon DynamoDB.
+Le projet utilise deux orchestrateurs, mais ils répondent à des problèmes différents.
 
-La table utilise `assessment_id` comme partition key :
+## LangGraph
+
+LangGraph orchestre la logique interne de l'analyse IA :
 
 ```text
-responsible-gaming-assessments-dev
-
-assessment_id (PK)
-│
-├── assessment
-│   ├── risk_level
-│   ├── confidence
-│   ├── reasoning
-│   └── recommendation
-│
-└── human_review_required
+analyse
+→ branchement
+→ récupération documentaire
+→ construction du prompt
+→ appel LLM
+→ production de l'assessment
 ```
 
-Pour la V1, la table utilise le mode `PAY_PER_REQUEST`.
+Il permet de représenter explicitement l'état et les différentes branches du workflow IA.
 
-L'écriture est effectuée directement par AWS Step Functions via l'intégration DynamoDB `PutItem`, sans ajouter une Lambda dédiée uniquement à la persistance.
+## AWS Step Functions
 
-Le rôle IAM de Step Functions dispose uniquement de la permission nécessaire sur la table concernée.
-
----
-
-## Infrastructure as Code
-
-L'infrastructure AWS est définie avec Terraform.
-
-Les principaux composants sont organisés en modules :
+Step Functions orchestre le système distribué AWS :
 
 ```text
-infra/
-│
-├── modules/
-│   ├── storage/
-│   ├── queue/
-│   ├── dispatcher/
-│   ├── assessment/
-│   ├── workflow/
-│   └── assessment_store/
-│
-└── environments/
-    └── dev/
+Lambda
+→ Assessment
+→ Choice
+→ attente humaine éventuelle
+→ callback
+→ reprise
+→ finalisation
 ```
 
-Terraform provisionne actuellement notamment :
+Il permet notamment au workflow d'attendre une décision humaine sans maintenir une Lambda active.
 
-- le bucket Amazon S3 d'entrée ;
-- la file Amazon SQS ;
-- la Dead-Letter Queue ;
-- les politiques SQS nécessaires aux événements S3 ;
-- la Dispatcher Lambda ;
-- le mapping SQS → Lambda ;
-- l'Assessment Lambda ;
-- AWS Step Functions ;
-- les rôles et politiques IAM ;
-- la table Amazon DynamoDB.
-
-Les permissions IAM sont séparées selon les responsabilités des composants afin d'éviter de donner des permissions globales inutiles.
-
----
-
-## Validation end-to-end
-
-Le pipeline a été validé sur une infrastructure AWS réelle.
-
-Un snapshot JSON de test est déposé dans Amazon S3 et traverse le pipeline complet :
+En résumé :
 
 ```text
-Amazon S3
-    │
-    ▼
-Amazon SQS
-    │
-    ▼
-Dispatcher Lambda
-    │
-    ▼
-AWS Step Functions
-    │
-    ▼
-Assessment Lambda
-    │
-    ▼
 LangGraph
-    │
-    ├── Deterministic Risk Analysis
-    ├── Bedrock Knowledge Base
-    └── Amazon Bedrock / Claude
-    │
-    ▼
-RiskAssessment
-    │
-    ▼
-Choice
-    │
-    ▼
-DynamoDB PutItem
-    │
-    ▼
-Persisted Assessment
-```
+→ orchestration du workflow IA
 
-Le scénario de validation utilisé produit notamment une évaluation `CRITICAL`, déclenche `human_review_required = true`, emprunte la branche de revue humaine du workflow puis persiste l'évaluation dans DynamoDB.
+Step Functions
+→ orchestration du workflow distribué AWS
+```
 
 ---
 
-## Tests
+# Human-in-the-Loop
 
-La suite de tests couvre actuellement :
+Lorsqu'une review humaine est nécessaire, Step Functions utilise le pattern callback :
 
-- les modèles du domaine ;
-- les détecteurs déterministes ;
-- le moteur d'analyse des risques ;
-- la construction des requêtes RAG ;
-- le mapping des résultats Bedrock ;
-- la construction des prompts ;
-- le parsing des évaluations LLM ;
-- l'orchestration du `AnalyzePlayerUseCase` ;
-- les nodes du workflow LangGraph ;
-- le mapping entre objets métier et état LangGraph ;
-- le câblage du Composition Root ;
-- le dispatcher Lambda ;
-- le traitement partiel des erreurs SQS.
-
-Les services AWS sont remplacés par des fakes ou mocks dans les tests unitaires afin de garantir :
-
-- des tests rapides ;
-- aucune dépendance réseau ;
-- aucun coût AWS ;
-- aucune dépendance aux credentials AWS.
-
-Exécution :
-
-```bash
-uv run --no-editable pytest
+```text
+lambda:invoke.waitForTaskToken
 ```
 
-Qualité du code :
+Le workflow génère un Task Token puis appelle la Lambda chargée de créer la review.
+
+```text
+Step Functions
+      │
+      ▼
+WaitForHumanReview
+      │
+      ▼
+Review Request Lambda
+      │
+      ▼
+DynamoDB
+review_status = PENDING
+      │
+      ▼
+Step Functions reste RUNNING
+```
+
+L'opérateur peut ensuite consulter l'assessment depuis l'interface.
+
+```text
+Operator
+    │
+    ├── APPROVE
+    │
+    └── REJECT
+           │
+           ▼
+      API Gateway
+           │
+           ▼
+ Review Decision Lambda
+           │
+           ▼
+      DynamoDB
+           │
+           ▼
+   SendTaskSuccess
+           │
+           ▼
+ même exécution Step Functions
+           │
+           ▼
+        Finalize
+```
+
+Le Task Token n'est jamais exposé au navigateur.
+
+L'interface manipule l'identifiant de l'assessment tandis que le backend conserve la capacité technique permettant de reprendre l'exécution Step Functions.
+
+---
+
+# Interface opérateur
+
+Le frontend est volontairement simple et développé en :
+
+- HTML ;
+- CSS ;
+- JavaScript vanilla.
+
+Son objectif n'est pas de constituer une application frontend complexe, mais de rendre le workflow backend réellement utilisable.
+
+L'opérateur peut consulter une assessment en attente avec :
+
+- le niveau de risque ;
+- le niveau de confiance ;
+- le statut de la review ;
+- le raisonnement produit par l'analyse IA ;
+- les recommandations proposées.
+
+![Assessment Responsible Gaming en attente de validation](docs/image/Operator_review.png)
+
+Les recommandations restent des propositions.
+
+Elles ne sont pas automatiquement appliquées au compte du joueur.
+
+L'opérateur peut ajouter du contexte à sa décision puis **approuver ou rejeter** la review.
+
+![Validation Human-in-the-Loop](docs/image/Operator_review_2.png)
+
+Le frontend permet ainsi de matérialiser la frontière entre l'analyse automatisée et la décision humaine.
+
+Il est distribué via :
+
+```text
+Amazon S3 privé
+      ↓
+Amazon CloudFront
+      ↓
+HTTPS
+```
+
+---
+
+# Gestion de la concurrence
+
+La validation humaine a introduit un problème de concurrence intéressant.
+
+Une première implémentation effectuait :
+
+```text
+GetItem
+   ↓
+vérifier PENDING
+   ↓
+UpdateItem
+```
+
+Deux requêtes concurrentes pouvaient donc toutes les deux lire `PENDING` avant que la première ne modifie la donnée.
+
+Le problème a été reproduit lors d'un test End-to-End avec plusieurs décisions concurrentes sur le même assessment.
+
+La transition est maintenant protégée par une **conditional write DynamoDB** :
+
+```text
+PENDING
+   │
+   │ ConditionExpression
+   ▼
+APPROVED / REJECTED
+```
+
+Lors du test de concurrence après correction :
+
+```text
+3 décisions concurrentes
+
+1 décision → acceptée
+2 décisions → 409 Conflict
+```
+
+Une seule requête peut donc effectuer la transition depuis `PENDING`.
+
+Ce mécanisme constitue une forme d'**optimistic concurrency control**.
+
+---
+
+# Sécurité
+
+La sécurité a été intégrée comme une responsabilité du système et non ajoutée uniquement à la fin du projet.
+
+## Authentification opérateur
+
+L'interface utilise Amazon Cognito avec :
+
+```text
+OAuth 2.0
++
+Authorization Code
++
+PKCE
+```
+
+Aucun client secret n'est stocké dans le navigateur.
+
+Les routes API sont protégées par un JWT Authorizer API Gateway.
+
+Un appel sans JWT valide retourne :
+
+```text
+HTTP 401 Unauthorized
+```
+
+## Protection du workflow
+
+Le Task Token Step Functions n'est jamais envoyé au frontend.
+
+Le navigateur ne dispose pas non plus de credentials AWS.
+
+```text
+Browser
+   ↓
+API Gateway
+   ↓
+JWT validation
+   ↓
+Backend
+   ↓
+AWS services
+```
+
+## IAM
+
+Les responsabilités disposent de rôles distincts :
+
+- Dispatcher ;
+- Assessment ;
+- Review Request ;
+- Review Decision ;
+- Review List ;
+- Step Functions.
+
+Les permissions IAM sont limitées aux opérations nécessaires autant que possible.
+
+---
+
+# Tests
+
+Les tests automatisés couvrent notamment :
+
+- les entités du domaine ;
+- les règles déterministes ;
+- le workflow LangGraph ;
+- le chemin sans signal ;
+- la création d'une review ;
+- les décisions humaines ;
+- les handlers Lambda ;
+- la protection contre les décisions concurrentes.
+
+Les commandes principales sont :
 
 ```bash
 uv run ruff check .
 uv run ruff format --check .
+uv run --no-editable pytest
 ```
 
-Les tests unitaires sont complétés par des validations end-to-end sur l'infrastructure AWS déployée.
+Des tests End-to-End ont également été réalisés sur l'infrastructure AWS réellement déployée.
+
+Scénarios principaux validés :
+
+```text
+CRITICAL
+   ↓
+Human Review
+   ↓
+APPROVE
+   ↓
+Callback
+   ↓
+Finalize
+```
+
+```text
+CRITICAL
+   ↓
+Human Review
+   ↓
+REJECT
+   ↓
+Callback
+   ↓
+Finalize
+```
+
+```text
+NO SIGNAL
+   ↓
+LOW
+   ↓
+Finalize
+```
+
+Un scénario de concurrence a également été exécuté afin de vérifier qu'une seule décision pouvait finaliser une review `PENDING`.
 
 ---
 
-## Stack technique
+# Intégration continue
 
-### Backend
+GitHub Actions exécute automatiquement les contrôles qualité lors des pushes et Pull Requests vers `main`.
+
+```text
+Push / Pull Request
+        │
+        ├──────────────┐
+        ▼              ▼
+ Python Quality   Terraform Quality
+        │              │
+   uv sync        terraform fmt
+        │              │
+   Ruff lint      terraform init
+        │              │
+ Ruff format      terraform validate
+        │
+      pytest
+```
+
+La CI utilise un runner Linux propre.
+
+Cela permet notamment de détecter les dépendances implicites à l'environnement de développement local.
+
+## Un bug réellement détecté par la CI
+
+Lors du premier passage de la CI, les tests échouaient avant même leur exécution.
+
+Un client boto3 Step Functions était créé lors de l'import du module :
+
+```python
+step_functions_client = boto3.client("stepfunctions")
+```
+
+Mon environnement local possédait déjà une région AWS configurée, ce qui masquait le problème.
+
+Le runner GitHub Actions n'en possédait pas.
+
+Le problème a été corrigé avec une initialisation lazy du client :
+
+```python
+def _get_step_functions_client() -> BaseClient:
+    global step_functions_client
+
+    if step_functions_client is None:
+        step_functions_client = boto3.client("stepfunctions")
+
+    return step_functions_client
+```
+
+Cette correction évite un side effect lors de l'import tout en conservant la possibilité de réutiliser le client lors des warm invocations Lambda.
+
+La CI n'est donc pas uniquement présente pour afficher un statut vert : elle a permis d'identifier une dépendance réelle à mon environnement local.
+
+---
+
+# Observabilité
+
+L'infrastructure AWS est connectée à Datadog via l'intégration AWS.
+
+L'objectif est de pouvoir répondre rapidement à des questions opérationnelles comme :
+
+```text
+Le système reçoit-il des événements ?
+
+Les Lambda échouent-elles ?
+
+Les workflows Step Functions démarrent-ils ?
+
+L'API répond-elle correctement ?
+
+La latence augmente-t-elle ?
+```
+
+Le dashboard suit notamment :
+
+## Lambda
+
+- invocations par fonction ;
+- erreurs ;
+- durée d'exécution.
+
+## Step Functions
+
+- exécutions démarrées ;
+- exécutions échouées.
+
+## API Gateway
+
+- nombre de requêtes ;
+- latence ;
+- erreurs 4XX ;
+- erreurs 5XX.
+
+Les erreurs 4XX et 5XX sont volontairement séparées.
+
+Un `401 Unauthorized` peut par exemple représenter le fonctionnement attendu de la couche de sécurité, tandis qu'une augmentation des erreurs 5XX est davantage susceptible d'indiquer un problème backend ou infrastructure.
+
+---
+
+# Stack technique
+
+## Backend
 
 - Python 3.13
-- Domain-Driven Design
-- Architecture hexagonale
-- Dependency Inversion Principle
-- Python Protocols
-
-### IA
-
-- Retrieval-Augmented Generation (RAG)
-- Amazon Bedrock Knowledge Bases
-- Amazon Bedrock
-- Claude
-- Structured LLM outputs
-
-### Orchestration
-
+- Pydantic
 - LangGraph
-- AWS Step Functions
+- boto3
 
-### Cloud / Infrastructure
+## Intelligence artificielle
 
-- AWS Lambda
+- Amazon Bedrock
+- Anthropic Claude
+- Amazon Bedrock Knowledge Bases
+- RAG
+
+## AWS
+
 - Amazon S3
 - Amazon SQS
-- Amazon SQS Dead-Letter Queue
+- Dead-Letter Queue
+- AWS Lambda
 - AWS Step Functions
 - Amazon DynamoDB
-- IAM
+- Amazon API Gateway
+- Amazon Cognito
+- Amazon CloudFront
+- Amazon Route 53
+- AWS Certificate Manager
+
+## Infrastructure et qualité
+
 - Terraform
-
-### Qualité
-
-- Pytest
-- Ruff
 - uv
-
-### Prévu
-
-- API de revue humaine
-- Interface opérateur
+- Ruff
+- pytest
+- pre-commit
 - GitHub Actions
-- Observabilité et monitoring
+
+## Observabilité
+
+- Amazon CloudWatch
+- Datadog
+
+## Frontend
+
+- HTML
+- CSS
+- JavaScript
 
 ---
 
-## État actuel
-
-### Implémenté
-
-- ✅ Structure du projet
-- ✅ Modèle de domaine
-- ✅ Détection déterministe des signaux de risque
-- ✅ Service d'analyse déterministe
-- ✅ Contrats applicatifs avec `Protocol`
-- ✅ Construction des requêtes RAG
-- ✅ Adapter Amazon Bedrock Knowledge Base
-- ✅ Mapping des documents RAG
-- ✅ Construction du prompt LLM
-- ✅ Contrat de sortie JSON structuré
-- ✅ Adapter d'évaluation du risque via Amazon Bedrock
-- ✅ Mapping vers `RiskAssessment`
-- ✅ Composition Root
-- ✅ Workflow d'analyse avec LangGraph
-- ✅ Nodes et état LangGraph sérialisable
-- ✅ Détermination du besoin de revue humaine
-- ✅ Bucket d'entrée Amazon S3
-- ✅ Pipeline événementiel S3 → SQS
-- ✅ Dead-Letter Queue SQS
-- ✅ Dispatcher Lambda
-- ✅ Partial batch failure pour SQS
-- ✅ Assessment Lambda
-- ✅ Orchestration AWS Step Functions
-- ✅ Branchement conditionnel avec un état `Choice`
-- ✅ Persistance des évaluations dans Amazon DynamoDB
-- ✅ IAM avec permissions dédiées aux composants
-- ✅ Infrastructure AWS avec Terraform
-- ✅ Tests unitaires du pipeline
-- ✅ Validation end-to-end sur AWS jusqu'à DynamoDB
-
-### En cours / prochaines étapes
-
-- 🚧 Callback Human-in-the-loop avec Step Functions Task Token
-- 🚧 API de validation opérateur
-- 🚧 Interface minimaliste de revue humaine
-- 🚧 Validation / rejet d'une évaluation
-- 🚧 CI/CD avec GitHub Actions
-- 🚧 Observabilité et monitoring
-- 🚧 Sécurisation et durcissement de l'infrastructure
-
----
-
-## Principes du projet
-
-### Déterministe avant génératif
-
-Les signaux de risque sont détectés par des règles métier déterministes.
-
-Le LLM intervient ensuite pour enrichir l'analyse et générer des recommandations contextualisées.
+# Structure du repository
 
 ```text
-Business Rules
-      ↓
-Risk Signals
-      ↓
-RAG
-      ↓
-LLM reasoning
-      ↓
-Recommendation
-      ↓
-Human decision
+responsible-gaming-ai/
+├── .github/
+│   └── workflows/
+├── docs/
+│   ├── adr/
+│   ├── contracts/
+│   └── image/
+├── edge/
+├── frontend/
+├── infra/
+│   ├── environments/
+│   └── modules/
+├── scripts/
+├── src/
+│   └── responsible_gaming/
+│       ├── application/
+│       ├── domain/
+│       ├── infrastructure/
+│       └── interfaces/
+├── tests/
+├── pyproject.toml
+└── README.md
 ```
 
-Cette séparation permet de ne pas déléguer au modèle génératif la détection initiale des comportements à risque.
-
-### Human-in-the-loop
-
-Le système est conçu pour assister un opérateur et non pour automatiser entièrement une décision sensible.
-
-Les évaluations nécessitant une revue humaine sont explicitement identifiées par le workflow avant d'être dirigées vers la branche HITL.
-
-### Séparation métier / infrastructure
-
-Le domaine ne dépend ni d'AWS, ni de Bedrock, ni d'un modèle spécifique.
-
-Les dépendances externes sont placées derrière des contrats applicatifs et connectées au système depuis le Composition Root.
-
-Cette séparation permet de faire évoluer l'infrastructure sans modifier la logique métier centrale.
-
-### Orchestration à plusieurs niveaux
-
-LangGraph et AWS Step Functions répondent à deux responsabilités différentes.
+Le code cherche à conserver une séparation claire entre les responsabilités :
 
 ```text
-LangGraph
-└── workflow d'analyse IA
-
-AWS Step Functions
-└── orchestration distribuée AWS / HITL
+Domain
+   ↑
+Application
+   ↑
+Infrastructure / Interfaces
 ```
 
-Cette séparation permet de conserver le workflow IA dans l'application tout en déléguant les traitements distribués et les attentes longues à l'orchestrateur cloud.
+Le domaine contient les règles métier et ne dépend pas directement des services AWS.
+
+Les détails techniques externes sont placés derrière les frontières applicatives lorsque cela apporte une séparation utile, sans chercher à sur-architecturer chaque composant.
 
 ---
 
-## Objectifs
+# Limites connues
 
-Ce projet vise à démontrer la capacité à construire une application AI/backend combinant :
+Cette version est volontairement une **V1**.
 
-- expertise métier ;
-- clean architecture ;
-- développement Python typé ;
-- architecture événementielle ;
-- intégration AWS ;
-- RAG ;
-- LLM ;
-- orchestration de workflows IA ;
-- orchestration cloud ;
-- Human-in-the-loop ;
-- tests automatisés ;
+Certaines limites sont connues et assumées.
+
+## Cohérence distribuée entre DynamoDB et Step Functions
+
+La décision humaine nécessite actuellement deux opérations sur des systèmes distincts :
+
+```text
+Conditional Update DynamoDB
+        ↓
+SendTaskSuccess
+        ↓
+Step Functions
+```
+
+Ces opérations ne partagent pas de transaction ACID.
+
+Il existe donc une fenêtre dans laquelle :
+
+1. la décision peut être enregistrée dans DynamoDB ;
+2. l'appel `SendTaskSuccess` peut rencontrer une erreur réseau ;
+3. Step Functions peut rester en attente.
+
+Une simple restauration de l'état `PENDING` ne serait pas nécessairement correcte : une erreur réseau ne garantit pas que Step Functions n'a pas reçu le callback.
+
+Une architecture destinée à la production pourrait introduire :
+
+- un état intermédiaire ;
+- une stratégie d'idempotence ;
+- un mécanisme de retry ;
+- un worker de réconciliation ;
+- un pattern outbox selon les contraintes métier.
+
+Cette complexité a volontairement été laissée hors du périmètre de la V1.
+
+## Exécution des recommandations
+
+Le système s'arrête après la review humaine.
+
+Il ne :
+
+- bloque pas un compte ;
+- ne modifie pas les limites ;
+- ne suspend pas un joueur ;
+- n'envoie pas automatiquement de communication.
+
+Une future version pourrait introduire des ports/adapters vers des systèmes métier capables d'exécuter certaines actions après validation humaine.
+
+Le LLM ne devrait cependant jamais disposer directement des permissions permettant de modifier un compte joueur.
+
+## Infrastructure
+
+Cette V1 utilise un état Terraform local.
+
+Ce choix reste acceptable pour un projet individuel, mais une infrastructure utilisée par une équipe nécessiterait notamment un backend distant et un mécanisme de locking.
+
+Le projet possède une CI mais pas de déploiement continu automatique vers AWS.
+
+---
+
+# Évolutions possibles
+
+Une V2 pourrait notamment introduire :
+
+- actions métier contrôlées après validation humaine ;
+- règles de risque configurables ;
+- protocole HITL plus robuste ;
+- audit trail enrichi ;
+- timestamps métier ;
+- réconciliation automatique des workflows ;
+- métriques métier personnalisées ;
+- tracing distribué ;
+- environnements dev / staging / production ;
+- backend Terraform distant ;
+- déploiement AWS via GitHub OIDC ;
+- enrichissement du corpus RAG.
+
+Une règle architecturale resterait néanmoins centrale :
+
+> **Le LLM peut proposer et contextualiser. Les actions sensibles doivent rester contrôlées par des composants déterministes et des mécanismes d'autorisation explicites.**
+
+---
+
+# Ce que ce projet m'a permis de travailler
+
+Responsible Gaming AI se situe à l'intersection de mon expérience professionnelle dans l'univers des jeux et de ma reconversion vers l'ingénierie logicielle, le cloud et l'intelligence artificielle.
+
+Le projet m'a permis de travailler concrètement sur :
+
+- modélisation d'un problème métier ;
+- architecture backend ;
+- séparation des responsabilités ;
+- architecture orientée domaine ;
+- systèmes distribués ;
+- serverless AWS ;
 - Infrastructure as Code ;
-- observabilité ;
-- pratiques CI/CD.
+- orchestration avec Step Functions ;
+- workflows IA avec LangGraph ;
+- RAG ;
+- intégration LLM ;
+- Human-in-the-Loop ;
+- concurrence ;
+- sécurité ;
+- tests unitaires ;
+- tests End-to-End ;
+- CI ;
+- observabilité.
+
+L'objectif n'était pas simplement de connecter un LLM à une API.
+
+L'objectif était de construire un système dans lequel **l'intelligence artificielle possède une responsabilité clairement délimitée au sein d'une architecture logicielle plus large**, tout en partant d'un domaine métier lié à mon expérience professionnelle.
 
 ---
 
-## Licence
+# Avertissement
 
-MIT
+Toutes les données joueur présentes dans ce repository sont fictives et destinées exclusivement à la démonstration technique.
+
+Les règles, seuils, niveaux de risque et recommandations présents dans le projet ont été conçus à des fins pédagogiques et ne représentent pas les procédures d'un opérateur de jeu réel.
+
+Ce projet n'est pas destiné à être utilisé tel quel pour prendre des décisions concernant de vrais joueurs.
